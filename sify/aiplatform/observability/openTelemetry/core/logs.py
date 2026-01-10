@@ -13,8 +13,8 @@ from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, ConsoleLogExporter
 from opentelemetry.trace import get_current_span
 
-from telemetry.utils.masking import mask_sensitive
-from telemetry.config import TelemetryConfig
+from sify.aiplatform.observability.openTelemetry.utils.masking import mask_sensitive
+from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
 
 
 class LogLevel(Enum):
