@@ -5,7 +5,8 @@ from enum import Enum
 import socket
 import time
 import random
-from telemetry.utils.user_context import get_user_context
+from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+# from telemetry.utils.user_context import get_user_context
 # Correct imports for OTel 1.19.0
 from opentelemetry._logs import SeverityNumber, set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider
