@@ -44,7 +44,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/MohanaSupraja/sify-sdk",
 
-    packages=find_packages(include=["telemetry*"]),
+    packages=find_packages(include=["sify*"]),
 
     python_requires=">=3.8",
 
