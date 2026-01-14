@@ -12,7 +12,10 @@ from .auto.sify_sdk_instrumentor import SifySDKInstrumentor
 from .auto.function_instrumentor import FunctionInstrumentor
 from .auto.class_instrumentor import ClassInstrumentor
 from .auto.decorators import create_decorators
-
+from opentelemetry.sdk.resources import Resource
+from sify.aiplatform.observability.openTelemetry.utils.service_name import (
+    detect_service_name,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -20,8 +23,17 @@ class TelemetryCollector:
     def __init__(self, config: Optional[TelemetryConfig] = None):
         self.config = config or TelemetryConfig()
 
-        # Setup OTel providers
-        providers = setup_otel(self.config)
+        service_name = self.config.service_name or detect_service_name(
+            framework_app=self.config.framework_app
+        )
+        self.service_name = service_name
+
+        resource = Resource.create({
+            "service.name": service_name,
+            "telemetry.sdk.name": "sify-otel-sdk",
+        })
+
+        providers = setup_otel(self.config, resource)
         self.trace_rules = self.config.trace_rules
         self.enable_traces = self.config.enable_traces
 
@@ -118,7 +130,7 @@ class TelemetryCollector:
         from opentelemetry.trace import get_current_span
 
         provider = self._logs.otel_logger_provider
-        otel_logger = provider.get_logger(self.config.service_name)
+        otel_logger = provider.get_logger(self.service_name)
 
         class OTelLoggingHandler(logging.Handler):
             def emit(self, record):
