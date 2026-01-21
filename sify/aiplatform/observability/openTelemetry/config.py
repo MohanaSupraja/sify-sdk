@@ -143,7 +143,7 @@ class TelemetryConfig:
     collector_endpoint: str = field(
         default_factory=lambda: env_str(
             "OTEL_EXPORTER_OTLP_ENDPOINT",
-            "http://otel-collector:4318"
+            # "http://otel-collector:4318"
         )
     )
 
