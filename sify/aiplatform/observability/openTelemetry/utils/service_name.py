@@ -13,26 +13,27 @@ INVALID_ENTRY_NAMES = {
 }
 
 def detect_app_name(default: str = "sify-client-app") -> str:
-    # 1. OTEL standard (highest priority)
     service = os.getenv("OTEL_SERVICE_NAME")
     if service:
         return service
+    return default
+
 
     # 2. Entrypoint
-    try:
-        entry = Path(sys.argv[0]).stem.lower()
-        if entry and entry not in INVALID_ENTRY_NAMES:
-            return entry
-    except Exception:
-        pass
+    # try:
+    #     entry = Path(sys.argv[0]).stem.lower()
+    #     if entry and entry not in INVALID_ENTRY_NAMES:
+    #         return entry
+    # except Exception:
+    #     pass
 
-    # 3. Current working directory
-    try:
-        cwd = Path.cwd().name.lower()
-        if cwd:
-            return cwd
-    except Exception:
-        pass
+    # # 3. Current working directory
+    # try:
+    #     cwd = Path.cwd().name.lower()
+    #     if cwd:
+    #         return cwd
+    # except Exception:
+    #     pass
 
     # 4. Final fallback
-    return default
+    # return default

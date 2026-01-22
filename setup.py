@@ -56,6 +56,7 @@ setup(
 
     install_requires=[
         # Core
+    
         "requests",
         "opentelemetry-api==1.38.0",
         "opentelemetry-sdk==1.38.0",
