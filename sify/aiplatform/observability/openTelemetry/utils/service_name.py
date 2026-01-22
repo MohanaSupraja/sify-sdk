@@ -1,17 +1,20 @@
+import os
 import sys
 from pathlib import Path
-
-INVALID_ENTRY_NAMES = {"python", "ipython", "gunicorn", "uvicorn", "pytest"}
-
-def detect_app_name(default="sify-client-app"):
+ 
+def detect_app_name() -> str:
     try:
-        entry = Path(sys.argv[0]).stem.lower()
-        if entry and entry not in INVALID_ENTRY_NAMES:
+        entry = Path(sys.argv[0]).stem
+        if entry and entry not in {"python", "ipython"}:
             return entry
     except Exception:
         pass
-
+ 
     try:
-        return Path.cwd().name.lower()
+        cwd_name = Path.cwd().name
+        if cwd_name:
+            return cwd_name
     except Exception:
-        return default
+        pass
+ 
+    return "sify-client-app"
