@@ -56,7 +56,7 @@ setup(
 
     install_requires=[
         # Core
-    
+        "python-dotenv",
         "requests",
         "opentelemetry-api==1.38.0",
         "opentelemetry-sdk==1.38.0",

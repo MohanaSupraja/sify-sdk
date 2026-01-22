@@ -3,7 +3,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
-
 INVALID_ENTRY_NAMES = {
     "python",
     "ipython",
