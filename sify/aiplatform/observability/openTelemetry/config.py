@@ -13,7 +13,8 @@ class TelemetryConfig:
     
     # SERVICE METADATA
     
-    service_name: str = field(default_factory=detect_app_name)
+    # service_name: str = field(default_factory=detect_app_name)
+    service_name: str = "sify-client-app1"
 
     resource_attributes: Dict[str, str] = field(default_factory=dict)
 
