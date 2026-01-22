@@ -101,6 +101,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any
 import os
+from sify.aiplatform.observability.openTelemetry.utils.app_detection import detect_app_name
 
 
 # --------------------
@@ -134,8 +135,9 @@ class TelemetryConfig:
 
     # SERVICE METADATA
     service_name: str = field(
-        default_factory=lambda: env_str("OTEL_SERVICE_NAME", "sify-service")
+        default_factory=lambda: detect_app_name()
     )
+
 
     resource_attributes: Dict[str, str] = field(default_factory=dict)
 

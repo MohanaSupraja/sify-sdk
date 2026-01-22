@@ -1,73 +1,38 @@
-"""
-Service name auto-detection for Sify OpenTelemetry SDK.
-
-Detection order (highest → lowest priority):
-1. Environment variables (infra-level, not user code)
-2. Framework metadata (Flask / FastAPI, if provided)
-3. Python runtime module/package
-4. Safe fallback
-
-This guarantees:
-- No filename-based collisions (app.py problem)
-- Stable identity across environments
-- Zero required user configuration
-"""
-
+# utils/app_detection.py
 import os
-import __main__
-import logging
+import sys
+from pathlib import Path
+from typing import Optional
 
-logger = logging.getLogger(__name__)
+INVALID_ENTRY_NAMES = {
+    "python",
+    "ipython",
+    "gunicorn",
+    "uvicorn",
+    "pytest",
+}
 
+def detect_app_name(default: str = "sify-client-app") -> str:
+    # 1. OTEL standard (highest priority)
+    service = os.getenv("OTEL_SERVICE_NAME")
+    if service:
+        return service
 
-def detect_service_name(framework_app=None) -> str:
-    """
-    Detect application service name without explicit user input.
+    # 2. Entrypoint
+    try:
+        entry = Path(sys.argv[0]).stem.lower()
+        if entry and entry not in INVALID_ENTRY_NAMES:
+            return entry
+    except Exception:
+        pass
 
-    :param framework_app: Optional framework app instance (e.g., Flask app)
-    :return: service.name string
-    """
+    # 3. Current working directory
+    try:
+        cwd = Path.cwd().name.lower()
+        if cwd:
+            return cwd
+    except Exception:
+        pass
 
-    # ------------------------------------------------------------------
-    # 1️⃣ Environment variables (BEST & industry standard)
-    # ------------------------------------------------------------------
-    service_name = (
-        os.getenv("OTEL_SERVICE_NAME")
-        or os.getenv("SERVICE_NAME")
-        or os.getenv("APP_NAME")
-    )
-    if service_name:
-        logger.debug("Service name detected from environment: %s", service_name)
-        return service_name
-
-    # ------------------------------------------------------------------
-    # 2️⃣ Framework-level detection (Flask, FastAPI, etc.)
-    # ------------------------------------------------------------------
-    if framework_app is not None:
-        import_name = getattr(framework_app, "import_name", None)
-        if import_name and import_name != "__main__":
-            logger.debug("Service name detected from framework: %s", import_name)
-            return import_name
-
-    # ------------------------------------------------------------------
-    # 3️⃣ Python runtime module/package
-    # ------------------------------------------------------------------
-    package = getattr(__main__, "__package__", None)
-    if package:
-        logger.debug("Service name detected from __main__.__package__: %s", package)
-        return package
-
-    module = getattr(__main__, "__name__", None)
-    if module and module != "__main__":
-        logger.debug("Service name detected from __main__.__name__: %s", module)
-        return module
-
-    # ------------------------------------------------------------------
-    # 4️⃣ Absolute fallback (never empty)
-    # ------------------------------------------------------------------
-    logger.warning(
-        "Unable to auto-detect service.name. "
-        "Defaulting to 'unknown-service'. "
-        "Consider setting OTEL_SERVICE_NAME."
-    )
-    return "unknown-service"
+    # 4. Final fallback
+    return default
