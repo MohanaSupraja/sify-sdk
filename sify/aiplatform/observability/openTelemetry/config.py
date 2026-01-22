@@ -101,7 +101,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any
 import os
-from sify.aiplatform.observability.openTelemetry.utils.app_detection import detect_app_name
+from sify.aiplatform.observability.openTelemetry.utils.service_name import detect_app_name
 
 
 # --------------------
