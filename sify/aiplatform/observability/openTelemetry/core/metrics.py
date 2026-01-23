@@ -1,8 +1,10 @@
 import logging
+from time import time
 from typing import Dict, Any, Callable, Optional
 # from telemetry.utils.user_context import get_user_context
 from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
+
 logger = logging.getLogger(__name__)
 if not logger.handlers:
     logging.basicConfig(level=logging.WARNING)
@@ -53,12 +55,22 @@ class MetricsManager:
             self._config = TelemetryConfig()
             self.otel_service_name = self._config.otel_service_name
             self.service_name = self._config.service_name
+            
         except Exception:
             self.otel_service_name = None
             self.service_name = None
         self.meter_provider = meter_provider
         self._instruments: Dict[str, Any] = {}
         self._observable_callbacks: Dict[str, Any] = {}
+
+    def _extra_context(self):
+        """Attach hostname, service, environment, timestamp."""
+        return {
+            "service.name": self.config.service_name,
+            "otel.service.name": self.config.otel_service_name,
+            "host.name": self.hostname,
+            "timestamp": int(time.time() * 1000),
+        }
 
     # ------------------- METER HELPERS ---------------------
 
@@ -133,6 +145,7 @@ class MetricsManager:
 
     def increment_counter(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
         inst = self._get_or_create(name, "counter", description="", unit="")
+        attributes.update(self._extra_context())
             
         try:
             attrs = dict(attributes or {})
@@ -160,6 +173,7 @@ class MetricsManager:
 
     def add_updown(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
         inst = self._get_or_create(name, "updown", description="", unit="")
+        attributes.update(self._extra_context())
         try:
             attrs = dict(attributes or {})
 
@@ -184,6 +198,7 @@ class MetricsManager:
 
     def record_histogram(self, name: str, value: float, attributes: Dict[str, Any] = None, unit=None):
         inst = self._get_or_create(name, "histogram", description="", unit=unit)
+        attributes.update(self._extra_context())
         try:
             attrs = dict(attributes or {})
 
@@ -217,6 +232,7 @@ class MetricsManager:
 
     def _create_observable(self, name: str, callback: Callable, inst_type: str):
         meter = self.get_meter(name)
+        
 
         try:
             if meter:
