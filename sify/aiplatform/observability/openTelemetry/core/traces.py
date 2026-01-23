@@ -33,8 +33,10 @@ class TracesManager:
         try:
             self._config = TelemetryConfig()
             self.otel_service_name = self._config.otel_service_name
+            self.service_name = self._config.service_name
         except Exception:
             self.otel_service_name = None
+            self.service_name = None
 
         try:
             if trace:
@@ -73,6 +75,10 @@ class TracesManager:
 
         if self.otel_service_name:
             attrs.setdefault("otel.service.name", self.otel_service_name)
+            
+        if self.service_name:
+            attrs.setdefault("service.name", self.service_name)
+        
         return attrs
 
     # ------------------------------------------------------------------

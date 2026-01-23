@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any, Callable, Optional
 # from telemetry.utils.user_context import get_user_context
 from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
-
+from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
 logger = logging.getLogger(__name__)
 if not logger.handlers:
     logging.basicConfig(level=logging.WARNING)
@@ -49,6 +49,13 @@ class MetricsManager:
     """
 
     def __init__(self, meter_provider=None):
+        try:
+            self._config = TelemetryConfig()
+            self.otel_service_name = self._config.otel_service_name
+            self.service_name = self._config.service_name
+        except Exception:
+            self.otel_service_name = None
+            self.service_name = None
         self.meter_provider = meter_provider
         self._instruments: Dict[str, Any] = {}
         self._observable_callbacks: Dict[str, Any] = {}
@@ -126,13 +133,22 @@ class MetricsManager:
 
     def increment_counter(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
         inst = self._get_or_create(name, "counter", description="", unit="")
-        
+            
         try:
-            attrs = attributes or {}
+            attrs = dict(attributes or {})
+
+            # always attach service identity
+            if self.service_name:
+                attrs.setdefault("service.name", self.service_name)
+
+            if self.otel_service_name:
+                attrs.setdefault("otel.service.name", self.otel_service_name)
+
+            # attach user only if present
             user_id = get_user_context()
             if user_id:
-                attrs = dict(attrs)
-                attrs["user.id"] = user_id
+                attrs.setdefault("user.id", user_id)
+
             inst.add(value, attrs)
         except Exception:
             logger.debug("Error incrementing counter '%s'", name, exc_info=True)
@@ -145,11 +161,18 @@ class MetricsManager:
     def add_updown(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
         inst = self._get_or_create(name, "updown", description="", unit="")
         try:
-            attrs = attributes or {}
+            attrs = dict(attributes or {})
+
+            if self.service_name:
+                attrs.setdefault("service.name", self.service_name)
+
+            if self.otel_service_name:
+                attrs.setdefault("otel.service.name", self.otel_service_name)
+
             user_id = get_user_context()
             if user_id:
-                attrs = dict(attrs)
-                attrs["user.id"] = user_id
+                attrs.setdefault("user.id", user_id)
+
             inst.add(value, attrs)
         except Exception:
             logger.debug("Error updating updown counter '%s'", name, exc_info=True)
@@ -162,11 +185,17 @@ class MetricsManager:
     def record_histogram(self, name: str, value: float, attributes: Dict[str, Any] = None, unit=None):
         inst = self._get_or_create(name, "histogram", description="", unit=unit)
         try:
-            attrs = attributes or {}
+            attrs = dict(attributes or {})
+
+            if self.service_name:
+                attrs.setdefault("service.name", self.service_name)
+
+            if self.otel_service_name:
+                attrs.setdefault("otel.service.name", self.otel_service_name)
+
             user_id = get_user_context()
             if user_id:
-                attrs = dict(attrs)
-                attrs["user.id"] = user_id
+                attrs.setdefault("user.id", user_id)
 
             inst.record(value, attrs)
         except Exception:
