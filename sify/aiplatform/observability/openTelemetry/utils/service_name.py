@@ -46,15 +46,15 @@ INVALID_ENTRY_NAMES = {
 #     return os.getenv("OTEL_SERVICE_NAME", default)
 
 
-def from_entrypoint() -> str | None:
-    """Detect service name from entry-point script"""
-    try:
-        entry = Path(sys.argv[0]).stem.lower()
-        if entry and entry not in INVALID_ENTRY_NAMES:
-            return entry
-    except Exception:
-        pass
-    return None
+# def from_entrypoint() -> str | None:
+#     """Detect service name from entry-point script"""
+#     try:
+#         entry = Path(sys.argv[0]).stem.lower()
+#         if entry and entry not in INVALID_ENTRY_NAMES:
+#             return entry
+#     except Exception:
+#         pass
+#     return None
 
 
 def from_cwd() -> str | None:
