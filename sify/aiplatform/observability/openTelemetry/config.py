@@ -10,7 +10,10 @@ class TelemetryConfig:
     Central configuration object for the entire Observability SDK.
     Handles both manual + auto-instrumentation cleanly.
     """    
-    service_name: str = "sify-service"
+    # service_name: str = "sify-service"
+    service_name: str = field(
+        default_factory=lambda: detect_app_name()
+    )
     resource_attributes: Dict[str, str] = field(default_factory=dict)
     
     # collector_endpoint: Optional[str] = None
