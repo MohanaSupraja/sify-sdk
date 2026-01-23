@@ -75,7 +75,7 @@ def detect_service_name(default: str = "unknown-python-app") -> str:
     4. Default
     """
     return (
-       from_entrypoint()
-        or from_cwd()
+    #    from_entrypoint()
+        from_cwd()
         or default
     )
