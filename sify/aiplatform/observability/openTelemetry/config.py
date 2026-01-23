@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional
 import os
-from sify.aiplatform.observability.openTelemetry.utils.service_name import detect_app_name
+
 
 @dataclass
 class TelemetryConfig:
@@ -20,7 +20,7 @@ class TelemetryConfig:
     # OTLP EXPORTER SETTINGS
     
     # collector_endpoint: Optional[str] = None
-    collector_endpoint: str = "http://otel-collector:4318"
+    collector_endpoint: str = "https://otel-collector.sifymdp.digital"
     protocol: str = "http/protobuf"         # {"http/protobuf", "grpc"}
     headers: Dict[str, str] = field(default_factory=dict)
     insecure: bool = True                    # Only for gRPC
