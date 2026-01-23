@@ -63,23 +63,23 @@ class TracesManager:
             return SpanKind.INTERNAL
         return None
 
-
     def _inject_user(self, attributes: Dict[str, Any] | None) -> Dict[str, Any] | None:
-        user_id = get_user_context()
-        if not user_id:
-            return attributes
-
         attrs = dict(attributes or {})
+
+        # user is optional
+        user_id = get_user_context()
         if user_id:
             attrs.setdefault("user.id", user_id)
 
+        # service info should NOT depend on user
         if self.otel_service_name:
             attrs.setdefault("otel.service.name", self.otel_service_name)
-            
+
         if self.service_name:
             attrs.setdefault("service.name", self.service_name)
-        
+
         return attrs
+
 
     # ------------------------------------------------------------------
     # Start span (context manager)
