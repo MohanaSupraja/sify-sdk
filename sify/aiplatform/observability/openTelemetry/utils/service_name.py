@@ -39,52 +39,52 @@ INVALID_ENTRY_NAMES = {
 }
 
 
-def _from_entrypoint() -> str | None:
-    """
-    Detect app name from entry-point script.
-    Example:
-        python order_service.py -> order_service
-    """
-    try:
-        entry = Path(sys.argv[0]).stem.lower()
-        if entry and entry not in INVALID_ENTRY_NAMES:
-            return entry
-    except Exception:
-        pass
-    return "unknown entrypoint app"
+# def _from_entrypoint() -> str | None:
+#     """
+#     Detect app name from entry-point script.
+#     Example:
+#         python order_service.py -> order_service
+#     """
+#     try:
+#         entry = Path(sys.argv[0]).stem.lower()
+#         if entry and entry not in INVALID_ENTRY_NAMES:
+#             return entry
+#     except Exception:
+#         pass
+#     return "unknown entrypoint app"
 
 
-def _from_pyproject() -> str | None:
-    """
-    Detect app name from pyproject.toml
-    """
-    path = Path.cwd() / "pyproject.toml"
-    if not path.exists():
-        return "no path"
+# def _from_pyproject() -> str | None:
+#     """
+#     Detect app name from pyproject.toml
+#     """
+#     path = Path.cwd() / "pyproject.toml"
+#     if not path.exists():
+#         return "no path"
 
-    try:
-        import tomllib  # Python 3.11+
-        data = tomllib.loads(path.read_text())
-        return data.get("project", {}).get("name")
-    except Exception:
-        return "unknown pyproject app"
+#     try:
+#         import tomllib  # Python 3.11+
+#         data = tomllib.loads(path.read_text())
+#         return data.get("project", {}).get("name")
+#     except Exception:
+#         return "unknown pyproject app"
 
 
-def _from_setup_cfg() -> str | None:
-    """
-    Detect app name from setup.cfg
-    """
-    path = Path.cwd() / "setup.cfg"
-    if not path.exists():
-        return "no path"
+# def _from_setup_cfg() -> str | None:
+#     """
+#     Detect app name from setup.cfg
+#     """
+#     path = Path.cwd() / "setup.cfg"
+#     if not path.exists():
+#         return "no path"
 
-    try:
-        for line in path.read_text().splitlines():
-            if line.strip().startswith("name"):
-                return line.split("=")[1].strip()
-    except Exception:
-        pass
-    return "unknown setup cfg app"
+#     try:
+#         for line in path.read_text().splitlines():
+#             if line.strip().startswith("name"):
+#                 return line.split("=")[1].strip()
+#     except Exception:
+#         pass
+#     return "unknown setup cfg app"
 
 
 def _from_cwd() -> str | None:
@@ -102,9 +102,10 @@ def detect_app_name(default: str = "unknown-python-app") -> str:
     Final detection order
     """
     return (
-        _from_entrypoint()
-        or _from_pyproject()
-        or _from_setup_cfg()
-        or _from_cwd()
+        # _from_entrypoint()
+        # or _from_pyproject()
+        # or _from_setup_cfg()
+        # or _from_cwd()
+        _from_cwd()
         or default
     )
