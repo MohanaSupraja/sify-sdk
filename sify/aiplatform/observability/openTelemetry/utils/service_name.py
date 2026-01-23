@@ -41,9 +41,9 @@ INVALID_ENTRY_NAMES = {
 }
 
 
-def from_otel_env(default: str = "sify-client-app") -> str:
-    """Read OpenTelemetry standard environment variable"""
-    return os.getenv("OTEL_SERVICE_NAME", default)
+# def from_otel_env(default: str = "sify-client-app") -> str:
+#     """Read OpenTelemetry standard environment variable"""
+#     return os.getenv("OTEL_SERVICE_NAME", default)
 
 
 def from_entrypoint() -> str | None:
@@ -75,8 +75,7 @@ def detect_service_name(default: str = "unknown-python-app") -> str:
     4. Default
     """
     return (
-        from_otel_env()
-        or from_entrypoint()
+       from_entrypoint()
         or from_cwd()
         or default
     )
