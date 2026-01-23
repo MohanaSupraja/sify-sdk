@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional
 from contextlib import contextmanager
 # from telemetry.utils.user_context import get_user_context   # ✅ already present
 from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
 
 try:
     from opentelemetry import trace
@@ -29,6 +30,11 @@ class TracesManager:
 
     def __init__(self, tracer_provider=None):
         self.tracer = None
+        try:
+            self._config = TelemetryConfig()
+            self.otel_service_name = self._config.otel_service_name
+        except Exception:
+            self.otel_service_name = None
 
         try:
             if trace:
@@ -55,16 +61,18 @@ class TracesManager:
             return SpanKind.INTERNAL
         return None
 
-    # ------------------------------------------------------------------
-    # 🔥 Internal helper: inject user.id into attributes
-    # ------------------------------------------------------------------
+
     def _inject_user(self, attributes: Dict[str, Any] | None) -> Dict[str, Any] | None:
         user_id = get_user_context()
         if not user_id:
             return attributes
 
         attrs = dict(attributes or {})
-        attrs.setdefault("user.id", user_id)
+        if user_id:
+            attrs.setdefault("user.id", user_id)
+
+        if self.otel_service_name:
+            attrs.setdefault("otel.service.name", self.otel_service_name)
         return attrs
 
     # ------------------------------------------------------------------
@@ -73,7 +81,7 @@ class TracesManager:
     @contextmanager
     def start_span(self, name: str, attributes: Dict[str, Any] = None, kind=None):
         kind = self._normalize_kind(kind)
-        attributes = self._inject_user(attributes)   # ✅ ADD
+        attributes = self._inject_user(attributes)   
 
         if self.tracer:
             try:
