@@ -1,6 +1,5 @@
 from typing import Dict, Any, Optional
 from contextlib import contextmanager
-from time import time
 # from telemetry.utils.user_context import get_user_context   # ✅ already present
 from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
@@ -54,14 +53,7 @@ class TracesManager:
         except Exception:
             self.tracer = None
 
-    def _extra_context(self):
-        """Attach hostname, service, environment, timestamp."""
-        return {
-            "service.name": self.config.service_name,
-            "otel.service.name": self.config.otel_service_name,
-            "host.name": self.hostname,
-            "timestamp": int(time.time() * 1000),
-        }
+    
 
     # ------------------------------------------------------------------
     # Internal helper: pick a safe SpanKind
@@ -98,7 +90,6 @@ class TracesManager:
     def start_span(self, name: str, attributes: Dict[str, Any] = None, kind=None):
         kind = self._normalize_kind(kind)
         attributes = self._inject_user(attributes)   
-        attributes.update(self._extra_context())
 
         if self.tracer:
             try:
@@ -120,8 +111,6 @@ class TracesManager:
     def start_span_as_current(self, name: str, attributes: Dict[str, Any] = None, kind=None):
         kind = self._normalize_kind(kind)
         attributes = self._inject_user(attributes)   # ✅ ADD
-        attributes.update(self._extra_context())
-
 
         if self.tracer:
             try:
@@ -144,7 +133,6 @@ class TracesManager:
     def create_span(self, name: str, attributes: Dict[str, Any] = None, kind=None):
         kind = self._normalize_kind(kind)
         attributes = self._inject_user(attributes)   # ✅ ADD
-        attributes.update(self._extra_context())
 
         if self.tracer:
             try:
