@@ -26,7 +26,9 @@
 
 
 # sify_monitoring_sdk/app_detection.py
+# service_name.py
 
+import os
 import sys
 from pathlib import Path
 
@@ -39,73 +41,42 @@ INVALID_ENTRY_NAMES = {
 }
 
 
-# def _from_entrypoint() -> str | None:
-#     """
-#     Detect app name from entry-point script.
-#     Example:
-#         python order_service.py -> order_service
-#     """
-#     try:
-#         entry = Path(sys.argv[0]).stem.lower()
-#         if entry and entry not in INVALID_ENTRY_NAMES:
-#             return entry
-#     except Exception:
-#         pass
-#     return "unknown entrypoint app"
+def from_otel_env(default: str = "sify-client-app") -> str:
+    """Read OpenTelemetry standard environment variable"""
+    return os.getenv("OTEL_SERVICE_NAME", default)
 
 
-# def _from_pyproject() -> str | None:
-#     """
-#     Detect app name from pyproject.toml
-#     """
-#     path = Path.cwd() / "pyproject.toml"
-#     if not path.exists():
-#         return "no path"
-
-#     try:
-#         import tomllib  # Python 3.11+
-#         data = tomllib.loads(path.read_text())
-#         return data.get("project", {}).get("name")
-#     except Exception:
-#         return "unknown pyproject app"
+def from_entrypoint() -> str | None:
+    """Detect service name from entry-point script"""
+    try:
+        entry = Path(sys.argv[0]).stem.lower()
+        if entry and entry not in INVALID_ENTRY_NAMES:
+            return entry
+    except Exception:
+        pass
+    return None
 
 
-# def _from_setup_cfg() -> str | None:
-#     """
-#     Detect app name from setup.cfg
-#     """
-#     path = Path.cwd() / "setup.cfg"
-#     if not path.exists():
-#         return "no path"
-
-#     try:
-#         for line in path.read_text().splitlines():
-#             if line.strip().startswith("name"):
-#                 return line.split("=")[1].strip()
-#     except Exception:
-#         pass
-#     return "unknown setup cfg app"
-
-
-def _from_cwd() -> str | None:
-    """
-    Detect app name from project directory
-    """
+def from_cwd() -> str | None:
+    """Detect service name from current working directory"""
     try:
         return Path.cwd().name.lower()
     except Exception:
-        return "unknown cwd app"
+        pass
+    return None
 
 
-def detect_app_name(default: str = "unknown-python-app") -> str:
+def detect_service_name(default: str = "unknown-python-app") -> str:
     """
-    Final detection order
+    Final detection order (short-circuiting):
+    1. OTEL_SERVICE_NAME
+    2. Entrypoint
+    3. CWD
+    4. Default
     """
     return (
-        # _from_entrypoint()
-        # or _from_pyproject()
-        # or _from_setup_cfg()
-        # or _from_cwd()
-        _from_cwd()
+        from_otel_env()
+        or from_entrypoint()
+        or from_cwd()
         or default
     )

@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional
 import os
-from sify.aiplatform.observability.openTelemetry.utils.service_name import detect_app_name
+from sify.aiplatform.observability.openTelemetry.utils.service_name import (
+    detect_service_name,
+)
 
 
 @dataclass
@@ -11,12 +13,13 @@ class TelemetryConfig:
     Handles both manual + auto-instrumentation cleanly.
     """    
     # service_name: str = "sify-service"
+    otel_service_name: Optional[str] = field(
+        default_factory=lambda: os.getenv("OTEL_SERVICE_NAME")
+    )
     service_name: str = field(
-        default_factory=lambda: detect_app_name()
+        default_factory=detect_service_name
     )
     resource_attributes: Dict[str, str] = field(default_factory=dict)
-    
-    # collector_endpoint: Optional[str] = None
     collector_endpoint: str = "https://otel-collector.sifymdp.digital"
     protocol: str = "http/protobuf"       
     headers: Dict[str, str] = field(default_factory=dict)

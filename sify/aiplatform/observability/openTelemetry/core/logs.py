@@ -129,6 +129,7 @@ class LogsManager:
         """Attach hostname, service, environment, timestamp."""
         return {
             "service.name": self.config.service_name,
+            "otel.service.name": self.config.otel_service_name,
             "host.name": self.hostname,
             "timestamp": int(time.time() * 1000),
         }
