@@ -30,7 +30,8 @@ class TelemetryCollector:
         self.logger_provider = providers.get("logger_provider")
 
         # Managers
-        self._traces = TracesManager(self.tracer_provider)
+        # self._traces = TracesManager(self.tracer_provider)
+        self._traces = TracesManager()
         self._metrics = MetricsManager(self.meter_provider)
         self._logs = LogsManager(self.config, logger_provider=self.logger_provider)
 
