@@ -138,11 +138,9 @@ class MetricsManager:
             attrs = dict(attributes or {})
 
             # always attach service identity
-            if self.service_name:
-                attrs.setdefault("service.name", self.service_name)
+            
 
-            if self.otel_service_name:
-                attrs.setdefault("otel.service.name", self.otel_service_name)
+            
 
             # attach user only if present
             user_id = get_user_context()
@@ -162,13 +160,6 @@ class MetricsManager:
         inst = self._get_or_create(name, "updown", description="", unit="")
         try:
             attrs = dict(attributes or {})
-
-            if self.service_name:
-                attrs.setdefault("service.name", self.service_name)
-
-            if self.otel_service_name:
-                attrs.setdefault("otel.service.name", self.otel_service_name)
-
             user_id = get_user_context()
             if user_id:
                 attrs.setdefault("user.id", user_id)
@@ -187,11 +178,9 @@ class MetricsManager:
         try:
             attrs = dict(attributes or {})
 
-            if self.service_name:
-                attrs.setdefault("service.name", self.service_name)
+            
 
-            if self.otel_service_name:
-                attrs.setdefault("otel.service.name", self.otel_service_name)
+            
 
             user_id = get_user_context()
             if user_id:
