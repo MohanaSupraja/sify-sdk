@@ -12,7 +12,7 @@ from opentelemetry._logs import SeverityNumber, set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, ConsoleLogExporter
 from opentelemetry.trace import get_current_span
-
+from opentelemetry.sdk.resources import Resource
 from sify.aiplatform.observability.openTelemetry.utils.masking import mask_sensitive
 from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
 
@@ -49,14 +49,21 @@ class LogsManager:
         # ------------------------------
         # Setup OpenTelemetry Logger
         # ------------------------------
+
         try:
-            # Reuse existing provider if given (from setup_otel), otherwise create & register a new one
+            resource = Resource.create({
+                "service.name": self.config.service_name,
+                "service.namespace": "sify",
+                "otel.service.name": self.config.otel_service_name,  # custom
+                "host.name": self.hostname,
+            })
+
             if logger_provider is not None:
                 self.otel_logger_provider = logger_provider
             else:
-                self.otel_logger_provider = LoggerProvider()
-                #  IMPORTANT: register as global provider so LoggingInstrumentor + others can use it
+                self.otel_logger_provider = LoggerProvider(resource=resource)
                 set_logger_provider(self.otel_logger_provider)
+
 
             use_http = (config.protocol or "").startswith("http")
 
@@ -128,8 +135,6 @@ class LogsManager:
     def _extra_context(self):
         """Attach hostname, service, environment, timestamp."""
         return {
-            "service.name": self.config.service_name,
-            "otel.service.name": self.config.otel_service_name,
             "host.name": self.hostname,
             "timestamp": int(time.time() * 1000),
         }
