@@ -191,8 +191,8 @@ def setup_otel(config: TelemetryConfig) -> Dict[str, Any]:
     # Resource (VERY IMPORTANT FOR LOKI LABELS)
     # ---------------------------------------------------------
     resource = Resource.create({
-        "service.clientname": config.service_name,
-        # "otel.service.name": config.otel_service_name,
+        "service.name": config.service_name,
+        "otel.service.name": config.otel_service_name,
         "service.namespace": "sify",    
         **(config.resource_attributes or {}),
     })
