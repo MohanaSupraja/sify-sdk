@@ -83,8 +83,8 @@ def detect_service_name(default: str = "unknown-python-app") -> str:
     4. Default
     """
     return (
-        from_entrypoint()
-        or from_asgi_app()
+        # from_entrypoint()
+        from_asgi_app()
         # or from_cwd()
         or default
     )
