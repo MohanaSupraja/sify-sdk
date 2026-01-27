@@ -36,7 +36,6 @@ INVALID_ENTRY_NAMES = {
     "python",
     "ipython",
     "gunicorn",
-    "uvicorn",
     "pytest",
 }
 
@@ -57,21 +56,21 @@ INVALID_ENTRY_NAMES = {
 #     return None
 
 
-def from_asgi_app():
-    for module in sys.modules.values():
-        if getattr(module, "__file__", None):
-            if module.__file__.endswith(".py"):
-                return Path(module.__file__).stem.lower()
-    return None
-
-
-# def from_cwd() -> str | None:
-#     """Detect service name from current working directory"""
-#     try:
-#         return Path.cwd().name.lower()
-#     except Exception:
-#         pass
+# def from_asgi_app():
+#     for module in sys.modules.values():
+#         if getattr(module, "__file__", None):
+#             if module.__file__.endswith(".py"):
+#                 return Path(module.__file__).stem.lower()
 #     return None
+
+
+def from_cwd() -> str | None:
+    """Detect service name from current working directory"""
+    try:
+        return Path.cwd().name.lower()
+    except Exception:
+        pass
+    return None
 
 
 def detect_service_name(default: str = "unknown-python-app") -> str:
@@ -84,7 +83,7 @@ def detect_service_name(default: str = "unknown-python-app") -> str:
     """
     return (
         # from_entrypoint()
-        from_asgi_app()
-        # or from_cwd()
+        # from_asgi_app()
+        from_cwd()
         or default
     )
