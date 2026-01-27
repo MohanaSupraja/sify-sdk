@@ -36,6 +36,7 @@ INVALID_ENTRY_NAMES = {
     "python",
     "ipython",
     "gunicorn",
+    "uvicorn",
     "pytest",
 }
 
@@ -45,24 +46,32 @@ INVALID_ENTRY_NAMES = {
 #     return os.getenv("OTEL_SERVICE_NAME", default)
 
 
-def from_entrypoint() -> str | None:
-    """Detect service name from entry-point script"""
-    try:
-        entry = Path(sys.argv[0]).stem.lower()
-        if entry and entry not in INVALID_ENTRY_NAMES:
-            return entry
-    except Exception:
-        pass
+# def from_entrypoint() -> str | None:
+#     """Detect service name from entry-point script"""
+#     try:
+#         entry = Path(sys.argv[0]).stem.lower()
+#         if entry and entry not in INVALID_ENTRY_NAMES:
+#             return entry
+#     except Exception:
+#         pass
+#     return None
+
+
+def from_asgi_app():
+    for module in sys.modules.values():
+        if getattr(module, "__file__", None):
+            if module.__file__.endswith(".py"):
+                return Path(module.__file__).stem.lower()
     return None
 
 
-def from_cwd() -> str | None:
-    """Detect service name from current working directory"""
-    try:
-        return Path.cwd().name.lower()
-    except Exception:
-        pass
-    return None
+# def from_cwd() -> str | None:
+#     """Detect service name from current working directory"""
+#     try:
+#         return Path.cwd().name.lower()
+#     except Exception:
+#         pass
+#     return None
 
 
 def detect_service_name(default: str = "unknown-python-app") -> str:
@@ -75,6 +84,7 @@ def detect_service_name(default: str = "unknown-python-app") -> str:
     """
     return (
         from_entrypoint()
-        or from_cwd()
+        or from_asgi_app()
+        # or from_cwd()
         or default
     )
