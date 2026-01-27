@@ -37,6 +37,7 @@ INVALID_ENTRY_NAMES = {
     "ipython",
     "gunicorn",
     "pytest",
+    "uvicorn"
 }
 
 
