@@ -9,7 +9,7 @@ INVALID = {
     "__main__",
 }
  
-def detect_app_name() -> str:
+def detect_service_name() -> str:
     if os.getenv("SIFY_APP_NAME"):
         return os.getenv("SIFY_APP_NAME")
  
