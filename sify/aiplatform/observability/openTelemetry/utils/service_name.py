@@ -64,14 +64,19 @@ INVALID_ENTRY_NAMES = {
 #                 return Path(module.__file__).stem.lower()
 #     return None
 
-
-def from_cwd() -> str | None:
-    """Detect service name from current working directory"""
-    try:
-        return Path.cwd().name.lower()
-    except Exception:
-        pass
+def path():
+    exe_name = os.path.basename(sys.executable)
+    if exe_name:
+        return exe_name 
     return None
+
+# def from_cwd() -> str | None:
+#     """Detect service name from current working directory"""
+#     try:
+#         return Path.cwd().name.lower()
+#     except Exception:
+#         pass
+#     return None
 
 
 def detect_service_name(default: str = "unknown-python-app") -> str:
@@ -85,6 +90,7 @@ def detect_service_name(default: str = "unknown-python-app") -> str:
     return (
         # from_entrypoint()
         # from_asgi_app()
-        from_cwd()
+        # from_cwd()
+        path()
         or default
     )
