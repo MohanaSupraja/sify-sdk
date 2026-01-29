@@ -14,7 +14,7 @@ class TelemetryConfig:
     """    
     # service_name: str = "sify-service"
     otel_service_name: Optional[str] = field(
-        default_factory=lambda: os.getenv("OTEL_SERVICE_NAME")
+        default_factory=lambda: os.getenv("OTEL_SERVICE_NAME") or "unknown otel service"
     )
     service_name: str = field(
         default_factory=detect_service_name
