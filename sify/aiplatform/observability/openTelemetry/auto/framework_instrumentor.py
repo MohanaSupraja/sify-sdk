@@ -3,7 +3,7 @@ import sys
 from typing import Any
 
 # from telemetry.utils.user_context import get_user_context
-from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+# from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 
 logger = logging.getLogger(__name__)
 
@@ -11,17 +11,17 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------
 # Span Processor to inject user.id into ALL framework spans
 # ------------------------------------------------------------
-class UserContextSpanProcessor:
-    def on_start(self, span, parent_context=None):
-        try:
-            user_id = get_user_context()
-            if user_id and span is not None:
-                span.set_attribute("user.id", user_id)
-        except Exception:
-            pass
+# class UserContextSpanProcessor:
+#     def on_start(self, span, parent_context=None):
+#         try:
+#             user_id = get_user_context()
+#             if user_id and span is not None:
+#                 span.set_attribute("user.id", user_id)
+#         except Exception:
+#             pass
 
-    def on_end(self, span):
-        pass
+#     def on_end(self, span):
+#         pass
 
 
 class FrameworkInstrumentor:

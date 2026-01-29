@@ -2,25 +2,23 @@ import logging
 from typing import Dict, List, Any, Optional
 
 # from telemetry.utils.user_context import get_user_context
-from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+# from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 
 logger = logging.getLogger(__name__)
 
 
-# ------------------------------------------------------------
-# 🔥 SpanProcessor to inject user.id into DB spans
-# ------------------------------------------------------------
-class UserContextDBSpanProcessor:
-    def on_start(self, span, parent_context=None):
-        try:
-            user_id = get_user_context()
-            if user_id and span is not None:
-                span.set_attribute("user.id", user_id)
-        except Exception:
-            pass
 
-    def on_end(self, span):
-        pass
+# class UserContextDBSpanProcessor:
+#     def on_start(self, span, parent_context=None):
+#         try:
+#             user_id = get_user_context()
+#             if user_id and span is not None:
+#                 span.set_attribute("user.id", user_id)
+#         except Exception:
+#             pass
+
+#     def on_end(self, span):
+#         pass
 
 
 class DatabaseInstrumentor:

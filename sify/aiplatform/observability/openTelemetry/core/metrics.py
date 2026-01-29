@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Callable, Optional
 # from telemetry.utils.user_context import get_user_context
-from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+# from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -83,7 +83,7 @@ class MetricsManager:
                        unit: Optional[str]):
 
         existing = self._instruments.get(name)
-        user_id = get_user_context()
+        # user_id = get_user_context()
         if existing and not self._is_noop(existing):
             return existing
 
@@ -143,9 +143,9 @@ class MetricsManager:
             
 
             # attach user only if present
-            user_id = get_user_context()
-            if user_id:
-                attrs.setdefault("user.id", user_id)
+            # user_id = get_user_context()
+            # if user_id:
+            #     attrs.setdefault("user.id", user_id)
 
             inst.add(value, attrs)
         except Exception:
@@ -160,9 +160,9 @@ class MetricsManager:
         inst = self._get_or_create(name, "updown", description="", unit="")
         try:
             attrs = dict(attributes or {})
-            user_id = get_user_context()
-            if user_id:
-                attrs.setdefault("user.id", user_id)
+            # user_id = get_user_context()
+            # if user_id:
+            #     attrs.setdefault("user.id", user_id)
 
             inst.add(value, attrs)
         except Exception:
@@ -182,9 +182,9 @@ class MetricsManager:
 
             
 
-            user_id = get_user_context()
-            if user_id:
-                attrs.setdefault("user.id", user_id)
+            # user_id = get_user_context()
+            # if user_id:
+            #     attrs.setdefault("user.id", user_id)
 
             inst.record(value, attrs)
         except Exception:

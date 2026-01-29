@@ -6,7 +6,7 @@ from opentelemetry.trace import StatusCode
 
 from sify.aiplatform.observability.openTelemetry.utils.trace_decision import should_trace
 # from telemetry.utils.user_context import get_user_context
-from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+# from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def instrument_class(cls, telemetry, prefix=None):
                 # --------------------------------------------------
                 # 3️⃣ User context (request scoped)
                 # --------------------------------------------------
-                user_id = get_user_context()
+                # user_id = get_user_context()
 
                 tracer = tele.traces.tracer
                 start_time = time.time()
@@ -91,8 +91,8 @@ def instrument_class(cls, telemetry, prefix=None):
                         span.set_attribute("code.module", orig_fn.__module__)
                         span.set_attribute("telemetry.kind", "class")
 
-                        if user_id:
-                            span.set_attribute("user.id", user_id)
+                        # if user_id:
+                        #     span.set_attribute("user.id", user_id)
 
                         try:
                             from flask import has_request_context, request
@@ -115,8 +115,8 @@ def instrument_class(cls, telemetry, prefix=None):
                                 "function": method_name,
                                 "outcome": "success",
                             }
-                            if user_id:
-                                metric_labels["user.id"] = user_id
+                            # if user_id:
+                            #     metric_labels["user.id"] = user_id
 
                             tele.metrics.increment_counter(
                                 f"{qualified_name}.calls",
@@ -140,8 +140,8 @@ def instrument_class(cls, telemetry, prefix=None):
                                 "duration_ms": duration_ms,
                                 "outcome": "success",
                             }
-                            if user_id:
-                                log_attrs["user.id"] = user_id
+                            # if user_id:
+                            #     log_attrs["user.id"] = user_id
 
                             tele.logs.info(
                                 f"{qualified_name} executed successfully",
@@ -171,8 +171,8 @@ def instrument_class(cls, telemetry, prefix=None):
                             "outcome": "error",
                             "exception.type": type(e).__name__,
                         }
-                        if user_id:
-                            error_labels["user.id"] = user_id
+                        # if user_id:
+                        #     error_labels["user.id"] = user_id
 
                         tele.metrics.increment_counter(
                             f"{qualified_name}.calls",
@@ -191,8 +191,8 @@ def instrument_class(cls, telemetry, prefix=None):
                             "outcome": "error",
                             "exception": str(e),
                         }
-                        if user_id:
-                            error_log_attrs["user.id"] = user_id
+                        # if user_id:
+                        #     error_log_attrs["user.id"] = user_id
 
                         tele.logs.error(
                             f"Error in {qualified_name}",
