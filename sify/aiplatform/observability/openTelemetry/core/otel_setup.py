@@ -192,10 +192,10 @@ def setup_otel(config: TelemetryConfig) -> Dict[str, Any]:
     # ---------------------------------------------------------
     resource = Resource.create({
         "service.name": config.service_name,
-        "client.app.name":config.service_name,
+        # "client.app.name":config.service_name,
         "service.id": config.service_name,
         "otel.service.name": config.otel_service_name,
-        "service.namespace": "sify",    
+        # "service.namespace": "sify",    
         **(config.resource_attributes or {}),
     })
 
