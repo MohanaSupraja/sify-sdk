@@ -1,11 +1,258 @@
+# import logging
+# from typing import Dict, Any, Callable, Optional
+# # from telemetry.utils.user_context import get_user_context
+# # from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
+# from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
+# logger = logging.getLogger(__name__)
+# if not logger.handlers:
+#     logging.basicConfig(level=logging.WARNING)
+
+# try:
+#     from opentelemetry import metrics as ot_metrics
+# except Exception:
+#     ot_metrics = None
+
+
+# # ---------------- NO-OP FALLBACK TYPES -------------------
+
+# class _NoopCounter:
+#     def add(self, value: float = 1.0, attributes: Dict[str, Any] = None):
+#         return None
+
+# class _NoopUpDownCounter:
+#     def add(self, value: float = 1.0, attributes: Dict[str, Any] = None):
+#         return None
+
+# class _NoopHistogram:
+#     def record(self, value: float, attributes: Dict[str, Any] = None):
+#         return None
+
+# class _NoopObservable:
+#     def __init__(self):
+#         self.callback = None
+
+
+# # ---------------------------------------------------------
+# #                METRIC MANAGER (FINAL VERSION)
+# # ---------------------------------------------------------
+
+# class MetricsManager:
+#     """
+#     Production-grade metrics manager supporting:
+#       ✔ Counter
+#       ✔ UpDownCounter
+#       ✔ Histogram
+#       ✔ Observable Gauge
+#       ✔ Observable Counter
+#       ✔ Observable UpDownCounter
+#     With auto-noop fallback & safe instrumentation recreation.
+#     """
+
+#     def __init__(self, meter_provider=None):
+#         try:
+#             self._config = TelemetryConfig()
+#             self.otel_service_name = self._config.otel_service_name
+#             self.service_name = self._config.service_name
+#         except Exception:
+#             self.otel_service_name = None
+#             self.service_name = None
+#         self.meter_provider = meter_provider
+#         self._instruments: Dict[str, Any] = {}
+#         self._observable_callbacks: Dict[str, Any] = {}
+
+#     # ------------------- METER HELPERS ---------------------
+
+#     def get_meter(self, name: str):
+#         """Return a meter from provider or fallback to ot_metrics."""
+#         try:
+#             if self.meter_provider:
+#                 return self.meter_provider.get_meter(name)
+#             if ot_metrics:
+#                 return ot_metrics.get_meter(name)
+#         except Exception as e:
+#             logger.debug("get_meter failed for %s: %s", name, e, exc_info=True)
+#         return None
+
+#     def _is_noop(self, inst: Any) -> bool:
+#         return isinstance(inst, (_NoopCounter, _NoopUpDownCounter, _NoopHistogram, _NoopObservable))
+
+#     # ------------------- GENERIC CREATION HELPER ---------------------
+
+#     def _get_or_create(self, name: str, inst_type: str,
+#                        description: Optional[str],
+#                        unit: Optional[str]):
+
+#         existing = self._instruments.get(name)
+#         # user_id = get_user_context()
+#         if existing and not self._is_noop(existing):
+#             return existing
+
+#         if existing and self._is_noop(existing):
+#             logger.debug(f"Attempting to replace noop instrument '{name}'.")
+
+#         meter = self.get_meter(name)
+#         if meter is None:
+#             logger.warning(
+#                 "No Meter available for '%s' — using NOOP instrument",
+#                 name
+#             )
+
+
+#         try:
+#             if meter:
+#                 kwargs = {}
+#                 if description: kwargs["description"] = description
+#                 if unit: kwargs["unit"] = unit
+
+#                 # mapping to real otel API
+#                 creator_map = {
+#                     "counter": meter.create_counter,
+#                     "updown": meter.create_up_down_counter,
+#                     "histogram": meter.create_histogram,
+#                 }
+
+#                 if inst_type in creator_map:
+#                     inst = creator_map[inst_type](name, **kwargs)
+#                     self._instruments[name] = inst
+#                     # logger.info("Created real %s '%s'", inst_type, name)
+#                     return inst
+
+#         except Exception as e:
+#             logger.debug(f"Failed to create {inst_type} '{name}': {e}", exc_info=True)
+
+#         # fallback to noop
+#         noop_map = {
+#             "counter": _NoopCounter(),
+#             "updown": _NoopUpDownCounter(),
+#             "histogram": _NoopHistogram(),
+#         }
+#         noop = noop_map[inst_type]
+#         self._instruments[name] = noop
+
+#         logger.warning(
+#             f"Using NOOP {inst_type} for '{name}'. "
+#             f"Install OpenTelemetry or configure a meter provider."
+#         )
+#         return noop
+
+#     # ------------------- COUNTERS ---------------------
+
+#     def increment_counter(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
+#         inst = self._get_or_create(name, "counter", description="", unit="")
+            
+#         try:
+#             attrs = dict(attributes or {})
+
+#             # always attach service identity
+            
+
+            
+
+#             # attach user only if present
+#             # user_id = get_user_context()
+#             # if user_id:
+#             #     attrs.setdefault("user.id", user_id)
+
+#             inst.add(value, attrs)
+#         except Exception:
+#             logger.debug("Error incrementing counter '%s'", name, exc_info=True)
+
+#     def create_counter(self, name: str, description=None, unit=None):
+#         return self._get_or_create(name, "counter", description, unit)
+
+#     # ------------------- UP-DOWN COUNTERS ---------------------
+
+#     def add_updown(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
+#         inst = self._get_or_create(name, "updown", description="", unit="")
+#         try:
+#             attrs = dict(attributes or {})
+#             # user_id = get_user_context()
+#             # if user_id:
+#             #     attrs.setdefault("user.id", user_id)
+
+#             inst.add(value, attrs)
+#         except Exception:
+#             logger.debug("Error updating updown counter '%s'", name, exc_info=True)
+
+#     def create_updown(self, name: str, description=None, unit=None):
+#         return self._get_or_create(name, "updown", description, unit)
+
+#     # ------------------- HISTOGRAM ----------------------
+
+#     def record_histogram(self, name: str, value: float, attributes: Dict[str, Any] = None, unit=None):
+#         inst = self._get_or_create(name, "histogram", description="", unit=unit)
+#         try:
+#             attrs = dict(attributes or {})
+
+            
+
+            
+
+#             # user_id = get_user_context()
+#             # if user_id:
+#             #     attrs.setdefault("user.id", user_id)
+
+#             inst.record(value, attrs)
+#         except Exception:
+#             logger.debug("Error recording histogram '%s'", name, exc_info=True)
+
+#     def create_histogram(self, name: str, description=None, unit=None):
+#         return self._get_or_create(name, "histogram", description, unit)
+
+#     # ------------------- OBSERVABLE METRICS ---------------------
+
+#     def create_observable_gauge(self, name: str, callback: Callable):
+#         return self._create_observable(name, callback, inst_type="gauge")
+
+#     def create_observable_counter(self, name: str, callback: Callable):
+#         return self._create_observable(name, callback, inst_type="counter")
+
+#     def create_observable_updown(self, name: str, callback: Callable):
+#         return self._create_observable(name, callback, inst_type="updown")
+
+#     def _create_observable(self, name: str, callback: Callable, inst_type: str):
+#         meter = self.get_meter(name)
+
+#         try:
+#             if meter:
+#                 if inst_type == "gauge":
+#                     observable = meter.create_observable_gauge(name, callbacks=[callback])
+#                 elif inst_type == "counter":
+#                     observable = meter.create_observable_counter(name, callbacks=[callback])
+#                 else:
+#                     observable = meter.create_observable_up_down_counter(name, callbacks=[callback])
+
+#                 self._instruments[name] = observable
+#                 self._observable_callbacks[name] = callback
+#                 # logger.info("Created observable %s '%s'", inst_type, name)
+#                 return observable
+
+#         except Exception as e:
+#             logger.debug(f"Failed to create observable {inst_type} '{name}': {e}", exc_info=True)
+
+#         # fallback noop
+#         noop = _NoopObservable()
+#         noop.callback = callback
+#         self._instruments[name] = noop
+#         return noop
+
+#     # --------------------- FLUSH ------------------------
+
+#     def flush(self):
+#         try:
+#             if self.meter_provider and hasattr(self.meter_provider, "shutdown"):
+#                 self.meter_provider.shutdown()
+#         except Exception:
+#             logger.debug("Error flushing meter provider", exc_info=True)
+
 import logging
 from typing import Dict, Any, Callable, Optional
-# from telemetry.utils.user_context import get_user_context
-# from sify.aiplatform.observability.openTelemetry.utils.user_context import get_user_context
 from sify.aiplatform.observability.openTelemetry.config import TelemetryConfig
+
 logger = logging.getLogger(__name__)
-if not logger.handlers:
-    logging.basicConfig(level=logging.WARNING)
+
+# Do NOT override global logging config here
+# Let application / SDK control logging level
 
 try:
     from opentelemetry import metrics as ot_metrics
@@ -33,7 +280,7 @@ class _NoopObservable:
 
 
 # ---------------------------------------------------------
-#                METRIC MANAGER (FINAL VERSION)
+#                METRIC MANAGER (FIXED)
 # ---------------------------------------------------------
 
 class MetricsManager:
@@ -45,66 +292,88 @@ class MetricsManager:
       ✔ Observable Gauge
       ✔ Observable Counter
       ✔ Observable UpDownCounter
-    With auto-noop fallback & safe instrumentation recreation.
+
+    Safe behavior:
+      • Lazy instrument creation
+      • Explicit NOOP fallback warnings
+      • Uses the SAME TelemetryConfig as Collector
     """
 
-    def __init__(self, meter_provider=None):
-        try:
-            self._config = TelemetryConfig()
-            self.otel_service_name = self._config.otel_service_name
-            self.service_name = self._config.service_name
-        except Exception:
-            self.otel_service_name = None
-            self.service_name = None
+    def __init__(
+        self,
+        meter_provider=None,
+        config: Optional[TelemetryConfig] = None,
+    ):
+        self.config = config
         self.meter_provider = meter_provider
+
         self._instruments: Dict[str, Any] = {}
         self._observable_callbacks: Dict[str, Any] = {}
+
+        if not self.meter_provider:
+            logger.warning(
+                "MetricsManager initialized WITHOUT MeterProvider — "
+                "metrics will be NOOP until a provider is configured."
+            )
 
     # ------------------- METER HELPERS ---------------------
 
     def get_meter(self, name: str):
-        """Return a meter from provider or fallback to ot_metrics."""
+        """
+        Return a meter from:
+          1. Explicit meter_provider (preferred)
+          2. Global OpenTelemetry metrics API
+        """
         try:
             if self.meter_provider:
                 return self.meter_provider.get_meter(name)
+
             if ot_metrics:
                 return ot_metrics.get_meter(name)
+
         except Exception as e:
             logger.debug("get_meter failed for %s: %s", name, e, exc_info=True)
+
         return None
 
     def _is_noop(self, inst: Any) -> bool:
-        return isinstance(inst, (_NoopCounter, _NoopUpDownCounter, _NoopHistogram, _NoopObservable))
+        return isinstance(
+            inst,
+            (_NoopCounter, _NoopUpDownCounter, _NoopHistogram, _NoopObservable),
+        )
 
     # ------------------- GENERIC CREATION HELPER ---------------------
 
-    def _get_or_create(self, name: str, inst_type: str,
-                       description: Optional[str],
-                       unit: Optional[str]):
-
+    def _get_or_create(
+        self,
+        name: str,
+        inst_type: str,
+        description: Optional[str],
+        unit: Optional[str],
+    ):
         existing = self._instruments.get(name)
-        # user_id = get_user_context()
+
+        # Return real instrument if already created
         if existing and not self._is_noop(existing):
             return existing
 
-        if existing and self._is_noop(existing):
-            logger.debug(f"Attempting to replace noop instrument '{name}'.")
-
         meter = self.get_meter(name)
+
         if meter is None:
             logger.warning(
-                "No Meter available for '%s' — using NOOP instrument",
-                name
+                "No Meter available for metric '%s' — using NOOP %s",
+                name,
+                inst_type,
             )
-
 
         try:
             if meter:
                 kwargs = {}
-                if description: kwargs["description"] = description
-                if unit: kwargs["unit"] = unit
+                if description:
+                    kwargs["description"] = description
+                if unit:
+                    kwargs["unit"] = unit
 
-                # mapping to real otel API
                 creator_map = {
                     "counter": meter.create_counter,
                     "updown": meter.create_up_down_counter,
@@ -114,87 +383,92 @@ class MetricsManager:
                 if inst_type in creator_map:
                     inst = creator_map[inst_type](name, **kwargs)
                     self._instruments[name] = inst
-                    # logger.info("Created real %s '%s'", inst_type, name)
                     return inst
 
         except Exception as e:
-            logger.debug(f"Failed to create {inst_type} '{name}': {e}", exc_info=True)
+            logger.debug(
+                "Failed to create %s '%s': %s",
+                inst_type,
+                name,
+                e,
+                exc_info=True,
+            )
 
-        # fallback to noop
+        # ---------- NOOP FALLBACK ----------
         noop_map = {
             "counter": _NoopCounter(),
             "updown": _NoopUpDownCounter(),
             "histogram": _NoopHistogram(),
         }
+
         noop = noop_map[inst_type]
         self._instruments[name] = noop
 
-        logger.warning(
-            f"Using NOOP {inst_type} for '{name}'. "
-            f"Install OpenTelemetry or configure a meter provider."
-        )
         return noop
 
     # ------------------- COUNTERS ---------------------
 
-    def increment_counter(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
-        inst = self._get_or_create(name, "counter", description="", unit="")
-            
+    def increment_counter(
+        self,
+        name: str,
+        value: float = 1.0,
+        attributes: Dict[str, Any] = None,
+    ):
+        inst = self._get_or_create(name, "counter", description=None, unit=None)
+
         try:
-            attrs = dict(attributes or {})
-
-            # always attach service identity
-            
-
-            
-
-            # attach user only if present
-            # user_id = get_user_context()
-            # if user_id:
-            #     attrs.setdefault("user.id", user_id)
-
-            inst.add(value, attrs)
+            inst.add(value, dict(attributes or {}))
         except Exception:
-            logger.debug("Error incrementing counter '%s'", name, exc_info=True)
+            logger.debug(
+                "Error incrementing counter '%s'",
+                name,
+                exc_info=True,
+            )
 
     def create_counter(self, name: str, description=None, unit=None):
         return self._get_or_create(name, "counter", description, unit)
 
     # ------------------- UP-DOWN COUNTERS ---------------------
 
-    def add_updown(self, name: str, value: float = 1.0, attributes: Dict[str, Any] = None):
-        inst = self._get_or_create(name, "updown", description="", unit="")
-        try:
-            attrs = dict(attributes or {})
-            # user_id = get_user_context()
-            # if user_id:
-            #     attrs.setdefault("user.id", user_id)
+    def add_updown(
+        self,
+        name: str,
+        value: float = 1.0,
+        attributes: Dict[str, Any] = None,
+    ):
+        inst = self._get_or_create(name, "updown", description=None, unit=None)
 
-            inst.add(value, attrs)
+        try:
+            inst.add(value, dict(attributes or {}))
         except Exception:
-            logger.debug("Error updating updown counter '%s'", name, exc_info=True)
+            logger.debug(
+                "Error updating updown counter '%s'",
+                name,
+                exc_info=True,
+            )
 
     def create_updown(self, name: str, description=None, unit=None):
         return self._get_or_create(name, "updown", description, unit)
 
     # ------------------- HISTOGRAM ----------------------
 
-    def record_histogram(self, name: str, value: float, attributes: Dict[str, Any] = None, unit=None):
-        inst = self._get_or_create(name, "histogram", description="", unit=unit)
+    def record_histogram(
+        self,
+        name: str,
+        value: float,
+        attributes: Dict[str, Any] = None,
+        unit: Optional[str] = None,
+    ):
+        inst = self._get_or_create(name, "histogram", description=None, unit=unit)
+
         try:
-            attrs = dict(attributes or {})
-
-            
-
-            
-
-            # user_id = get_user_context()
-            # if user_id:
-            #     attrs.setdefault("user.id", user_id)
-
-            inst.record(value, attrs)
+            inst.record(value, dict(attributes or {}))
         except Exception:
-            logger.debug("Error recording histogram '%s'", name, exc_info=True)
+            logger.debug(
+                "Error recording histogram '%s'",
+                name,
+                exc_info=True,
+            )
 
     def create_histogram(self, name: str, description=None, unit=None):
         return self._get_or_create(name, "histogram", description, unit)
@@ -202,13 +476,13 @@ class MetricsManager:
     # ------------------- OBSERVABLE METRICS ---------------------
 
     def create_observable_gauge(self, name: str, callback: Callable):
-        return self._create_observable(name, callback, inst_type="gauge")
+        return self._create_observable(name, callback, "gauge")
 
     def create_observable_counter(self, name: str, callback: Callable):
-        return self._create_observable(name, callback, inst_type="counter")
+        return self._create_observable(name, callback, "counter")
 
     def create_observable_updown(self, name: str, callback: Callable):
-        return self._create_observable(name, callback, inst_type="updown")
+        return self._create_observable(name, callback, "updown")
 
     def _create_observable(self, name: str, callback: Callable, inst_type: str):
         meter = self.get_meter(name)
@@ -216,21 +490,25 @@ class MetricsManager:
         try:
             if meter:
                 if inst_type == "gauge":
-                    observable = meter.create_observable_gauge(name, callbacks=[callback])
+                    inst = meter.create_observable_gauge(name, callbacks=[callback])
                 elif inst_type == "counter":
-                    observable = meter.create_observable_counter(name, callbacks=[callback])
+                    inst = meter.create_observable_counter(name, callbacks=[callback])
                 else:
-                    observable = meter.create_observable_up_down_counter(name, callbacks=[callback])
+                    inst = meter.create_observable_up_down_counter(name, callbacks=[callback])
 
-                self._instruments[name] = observable
+                self._instruments[name] = inst
                 self._observable_callbacks[name] = callback
-                # logger.info("Created observable %s '%s'", inst_type, name)
-                return observable
+                return inst
 
         except Exception as e:
-            logger.debug(f"Failed to create observable {inst_type} '{name}': {e}", exc_info=True)
+            logger.debug(
+                "Failed to create observable %s '%s': %s",
+                inst_type,
+                name,
+                e,
+                exc_info=True,
+            )
 
-        # fallback noop
         noop = _NoopObservable()
         noop.callback = callback
         self._instruments[name] = noop
@@ -239,12 +517,14 @@ class MetricsManager:
     # --------------------- FLUSH ------------------------
 
     def flush(self):
+        """
+        Flush metrics explicitly (useful in tests / shutdown).
+        """
         try:
             if self.meter_provider and hasattr(self.meter_provider, "shutdown"):
                 self.meter_provider.shutdown()
         except Exception:
             logger.debug("Error flushing meter provider", exc_info=True)
-
 
 
 
