@@ -299,7 +299,6 @@
 
 import logging
 from typing import Dict, Any
-
 from opentelemetry.sdk.resources import Resource
 from opentelemetry import trace, metrics
 from opentelemetry._logs import set_logger_provider
@@ -329,12 +328,12 @@ logger = logging.getLogger(__name__)
 
 
 def setup_otel(config: TelemetryConfig) -> Dict[str, Any]:
-    logger.info(
-        "Telemetry enabled: traces=%s metrics=%s logs=%s",
-        config.enable_traces,
-        config.enable_metrics,
-        config.enable_logs,
-    )
+    """
+    Fully working OpenTelemetry setup:
+    - Traces → OTLP → Collector
+    - Metrics → OTLP → Collector
+    - Logs   → OTLP → Collector → Loki
+    """
 
     providers = {
         "tracer_provider": None,
@@ -342,13 +341,19 @@ def setup_otel(config: TelemetryConfig) -> Dict[str, Any]:
         "logger_provider": None,
     }
 
-    # ---------------- RESOURCE ----------------
+    # ---------------------------------------------------------
+    # Resource (VERY IMPORTANT FOR LOKI LABELS)
+    # ---------------------------------------------------------
     resource = Resource.create({
         "service.name": config.service_name,
         **(config.resource_attributes or {}),
     })
 
-    # ================= TRACES =================
+    use_http = (config.protocol or "").startswith("http")
+
+    # =========================================================
+    # TRACES
+    # =========================================================
     if config.enable_traces:
         try:
             tracer_provider = TracerProvider(
@@ -360,79 +365,72 @@ def setup_otel(config: TelemetryConfig) -> Dict[str, Any]:
                 ),
             )
 
-            span_exporter = (
-                OTLPSpanExporter(
-                    endpoint=f"{config.collector_endpoint}/v1/traces",
-                    headers=config.headers or {},
-                )
-                if config.collector_endpoint
-                else ConsoleSpanExporter()
-            )
+            span_exporter = OTLPSpanExporter(
+                endpoint=f"{config.collector_endpoint}/v1/traces",
+                headers=config.headers or {},
+            ) if config.collector_endpoint else ConsoleSpanExporter()
 
             tracer_provider.add_span_processor(
-                BatchSpanProcessor(span_exporter)
+                BatchSpanProcessor(
+                    span_exporter,
+                    schedule_delay_millis=config.export_interval_ms,
+                    max_export_batch_size=config.max_export_batch_size,
+                    max_queue_size=config.max_queue_size,
+                )
             )
 
             trace.set_tracer_provider(tracer_provider)
             providers["tracer_provider"] = tracer_provider
 
-        except Exception:
+        except Exception as e:
             logger.exception("Trace setup failed")
 
-    # ================= METRICS =================
+    # =========================================================
+    # METRICS
+    # =========================================================
     if config.enable_metrics:
         try:
-            if not config.collector_endpoint:
-                logger.warning(
-                    "Metrics enabled but collector_endpoint missing — using console exporter"
-                )
-
-            metric_exporter = (
-                OTLPMetricExporter(
-                    endpoint=f"{config.collector_endpoint}/v1/metrics",
-                    headers=config.headers or {},
-                )
-                if config.collector_endpoint
-                else ConsoleMetricExporter()
-            )
+            metric_exporter = OTLPMetricExporter(
+                endpoint=f"{config.collector_endpoint}/v1/metrics",
+                headers=config.headers or {},
+            ) if config.collector_endpoint else ConsoleMetricExporter()
 
             meter_provider = MeterProvider(
                 resource=resource,
                 metric_readers=[
                     PeriodicExportingMetricReader(
                         exporter=metric_exporter,
-                        export_interval_millis=5000,  # DEBUG FRIENDLY
+                        export_interval_millis=config.export_interval_ms,
                     )
                 ],
             )
 
             metrics.set_meter_provider(meter_provider)
-            logger.info("MeterProvider configured for %s", config.service_name)
             providers["meter_provider"] = meter_provider
 
-        except Exception:
+        except Exception as e:
             logger.exception("Metric setup failed")
 
-    # ================= LOGS =================
+    # =========================================================
+    # LOGS THIS IS THE CRITICAL PART
+    # =========================================================
     if config.enable_logs:
         try:
             logger_provider = LoggerProvider(resource=resource)
 
-            log_exporter = (
-                OTLPLogExporter(
-                    endpoint=f"{config.collector_endpoint}/v1/logs",
-                    headers=config.headers or {},
-                )
-                if config.collector_endpoint
-                else ConsoleLogExporter()
-            )
+            log_exporter = OTLPLogExporter(
+                endpoint=f"{config.collector_endpoint}/v1/logs",
+                headers=config.headers or {},
+            ) if config.collector_endpoint else ConsoleLogExporter()
 
             logger_provider.add_log_record_processor(
                 BatchLogRecordProcessor(log_exporter)
             )
 
+            #  REQUIRED: register provider globally
             set_logger_provider(logger_provider)
 
+            # REQUIRED: attach handler to Python logging
             handler = LoggingHandler(
                 level=logging.NOTSET,
                 logger_provider=logger_provider,
@@ -444,10 +442,11 @@ def setup_otel(config: TelemetryConfig) -> Dict[str, Any]:
 
             providers["logger_provider"] = logger_provider
 
-        except Exception:
+        except Exception as e:
             logger.exception("Log setup failed")
 
     return providers
+
 
 
 f"""setup_otel() initializes OpenTelemetry Tracing + Metrics for your SDK:
