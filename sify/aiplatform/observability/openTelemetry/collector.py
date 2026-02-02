@@ -24,18 +24,21 @@ class TelemetryCollector:
         providers = setup_otel(self.config)
         self.trace_rules = self.config.trace_rules
         self.enable_traces = self.config.enable_traces
-
+        providers = setup_otel(self.config)
+        
         self.tracer_provider = providers.get("tracer_provider")
         self.meter_provider = providers.get("meter_provider")
         self.logger_provider = providers.get("logger_provider")
-
-        # Managers
-        # self._traces = TracesManager(self.tracer_provider)
-        self._traces = TracesManager()
+        
         self._metrics = MetricsManager(self.meter_provider)
+        self._traces = TracesManager()
         self._logs = LogsManager(self.config, logger_provider=self.logger_provider)
+        
+        self._lib_instrumentor = LibraryInstrumentor()
+        self._fw_instrumentor = FrameworkInstrumentor(self)
+        self._db_instrumentor = DatabaseInstrumentor()
 
-        # Instrumentors
+
         self._lib_instrumentor = LibraryInstrumentor()
         self._fw_instrumentor = FrameworkInstrumentor(self)
         self._db_instrumentor = DatabaseInstrumentor()
@@ -259,14 +262,22 @@ class TelemetryCollector:
         except Exception:
             pass
         return False
-
+    
     def shutdown(self, timeout_ms: int = 30000) -> bool:
         try:
-            if hasattr(self.tracer_provider, "shutdown"):
+            if self.meter_provider:
+                self.meter_provider.shutdown()
+        except Exception:
+            pass
+    
+        try:
+            if self.tracer_provider:
                 self.tracer_provider.shutdown(timeout_ms / 1000.0)
         except Exception:
             pass
+    
         return True
+
 
 
 
