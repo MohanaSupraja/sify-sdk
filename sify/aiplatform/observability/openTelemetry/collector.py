@@ -1,10 +1,12 @@
 import logging
 from typing import Optional, List, Dict, Any
+
 from .config import TelemetryConfig
 from .core.otel_setup import setup_otel
 from .core.traces import TracesManager
 from .core.metrics import MetricsManager
 from .core.logs import LogsManager
+
 from .auto.library_instrumentor import LibraryInstrumentor
 from .auto.framework_instrumentor import FrameworkInstrumentor
 from .auto.database_instrumentor import DatabaseInstrumentor
@@ -20,25 +22,28 @@ class TelemetryCollector:
     def __init__(self, config: Optional[TelemetryConfig] = None):
         self.config = config or TelemetryConfig()
 
-        # Setup OTel providers
+        # --------------------------------------------------------
+        # SETUP OTEL PROVIDERS (ONLY ONCE)
+        # --------------------------------------------------------
         providers = setup_otel(self.config)
-        self.trace_rules = self.config.trace_rules
-        self.enable_traces = self.config.enable_traces
-        providers = setup_otel(self.config)
-        
+
         self.tracer_provider = providers.get("tracer_provider")
         self.meter_provider = providers.get("meter_provider")
         self.logger_provider = providers.get("logger_provider")
-        
-        self._metrics = MetricsManager(self.meter_provider)
+
+        self.trace_rules = self.config.trace_rules
+        self.enable_traces = self.config.enable_traces
+
+        # --------------------------------------------------------
+        # MANAGERS
+        # --------------------------------------------------------
         self._traces = TracesManager()
+        self._metrics = MetricsManager(self.meter_provider, self.config)
         self._logs = LogsManager(self.config, logger_provider=self.logger_provider)
-        
-        self._lib_instrumentor = LibraryInstrumentor()
-        self._fw_instrumentor = FrameworkInstrumentor(self)
-        self._db_instrumentor = DatabaseInstrumentor()
 
-
+        # --------------------------------------------------------
+        # INSTRUMENTORS (CREATE ONCE)
+        # --------------------------------------------------------
         self._lib_instrumentor = LibraryInstrumentor()
         self._fw_instrumentor = FrameworkInstrumentor(self)
         self._db_instrumentor = DatabaseInstrumentor()
@@ -50,10 +55,9 @@ class TelemetryCollector:
         self._instrumented_libraries = set()
 
         # --------------------------------------------------------
-        # 1️⃣ Auto-instrument Framework (Flask / Django / FastAPI)
+        # 1️⃣ FRAMEWORK AUTO-INSTRUMENTATION
         # --------------------------------------------------------
         if self.config.auto_instrument and self.config.instrument_frameworks:
-            logger.debug("Auto-instrumenting framework...")
             try:
                 if self.config.framework_app:
                     self._fw_instrumentor.instrument_app(self.config.framework_app)
@@ -61,39 +65,39 @@ class TelemetryCollector:
                 logger.debug("Framework auto-instrumentation failed", exc_info=True)
 
         # --------------------------------------------------------
-        # 2️⃣ Auto-instrument Libraries (requests, httpx, urllib3)
+        # 2️⃣ LIBRARY AUTO-INSTRUMENTATION
         # --------------------------------------------------------
-
         if (
             self.config.auto_instrument
             and self.config.instrument_libraries_enabled
             and self.config.instrument_libraries
         ):
-            logger.debug(f"Auto-instrumenting libraries: {self.config.instrument_libraries}")
             try:
-                results = self._lib_instrumentor.instrument(self.config.instrument_libraries)
+                self._lib_instrumentor.instrument(self.config.instrument_libraries)
                 self._instrumented_libraries.update(self.config.instrument_libraries)
             except Exception:
                 logger.debug("Library auto-instrumentation failed", exc_info=True)
 
-
         # --------------------------------------------------------
-        # 3️⃣ Auto-instrument Databases
+        # 3️⃣ DATABASE AUTO-INSTRUMENTATION
         # --------------------------------------------------------
         if (
             self.config.auto_instrument
             and self.config.instrument_databases_enabled
             and self.config.instrument_databases
         ):
-            logger.debug(f"Auto-instrumenting DB clients: {self.config.instrument_databases}")
             try:
                 self._db_instrumentor.instrument(self.config.instrument_databases)
             except Exception:
                 logger.debug("Database instrumentation failed", exc_info=True)
 
+        # --------------------------------------------------------
+        # 4️⃣ PYTHON LOGGING AUTO-INSTRUMENTATION
+        # --------------------------------------------------------
         if self.config.enable_logs and self.config.auto_instrument:
             try:
                 from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
                 LoggingInstrumentor().instrument(
                     set_logging_format=True,
                     excluded_loggers=[
@@ -109,50 +113,12 @@ class TelemetryCollector:
             except Exception:
                 logger.debug("Python logging auto-instrumentation failed", exc_info=True)
 
-        #  THEN disable framework logs (user intent)
+        # --------------------------------------------------------
+        # DISABLE FRAMEWORK LOGS (USER CHOICE)
+        # --------------------------------------------------------
         if self.config.disable_framework_logs:
             for name in self.config.framework_loggers_to_disable:
                 logging.getLogger(name).disabled = True
-
-    # --------------------------------------------------------
-    #  NEW METHOD: EXPORT NORMAL PYTHON LOGS → OTEL → LOKI
-    # --------------------------------------------------------
-    def _enable_python_auto_log_capture(self):
-        import logging
-        from opentelemetry.trace import get_current_span
-
-        provider = self._logs.otel_logger_provider
-        otel_logger = provider.get_logger(self.config.service_name)
-
-        class OTelLoggingHandler(logging.Handler):
-            def emit(self, record):
-                try:
-                    span_ctx = get_current_span().get_span_context()
-                    trace_attrs = {}
-
-                    if span_ctx and span_ctx.trace_id != 0:
-                        trace_attrs = {
-                            "trace_id": f"{span_ctx.trace_id:032x}",
-                            "span_id": f"{span_ctx.span_id:016x}",
-                        }
-
-                    otel_logger.emit(
-                        body=record.getMessage(),
-                        severity_text=record.levelname,
-                        severity_number=record.levelno,
-                        attributes={
-                            "logger.name": record.name,
-                            "file": record.filename,
-                            "line": record.lineno,
-                            **trace_attrs,
-                        },
-                    )
-                except Exception:
-                    pass
-
-        root = logging.getLogger()
-        root.addHandler(OTelLoggingHandler())
-        root.setLevel(logging.INFO)
 
     # ---------------- PROPERTIES ----------------
     @property
@@ -200,42 +166,14 @@ class TelemetryCollector:
 
     def instrument_class(self, cls, prefix=None):
         return self._class_instrumentor.instrument(cls, self, prefix)
-    
 
     def instrument_function(self, func, name: str = None):
-
-        print(" [Collector.instrument_function] Called", flush=True)
-        print(f"    ➤ func original: {func} (id={id(func)})", flush=True)
-        print(f"    ➤ func name: {func.__name__}", flush=True)
-
-        # Avoid double wrapping
         if getattr(func, "__wrapped_by_sdk__", False):
-            print("     Function already wrapped, returning existing wrapper", flush=True)
             return func
 
-        # Ask FunctionInstrumentor to wrap the function
-        wrapped = self._func_instrumentor.instrument(func, name,  telemetry=self)
-        print(f"    ✔ Wrapper created: {wrapped} (id={id(wrapped)})", flush=True)
-        print(f"    ✔ Wrapper __name__ = {wrapped.__name__}", flush=True)
+        wrapped = self._func_instrumentor.instrument(func, name, telemetry=self)
         wrapped.__wrapped_by_sdk__ = True
-
-        print(f"     Attached TelemetryCollector to wrapper _telemetry={wrapped._telemetry}", flush=True)
-
-        # EXTRA DEBUG - Check mapping
-        try:
-            instrumentor_map = self._func_instrumentor._wrapped
-            if func in instrumentor_map:
-                print(f"    Mapping found: {func} → {instrumentor_map[func]}", flush=True)
-            else:
-                print("     Mapping NOT found inside FunctionInstrumentor!", flush=True)
-        except Exception as e:
-            print(f"     Failed to inspect FunctionInstrumentor mapping: {e}", flush=True)
-
-        print(" [Collector.instrument_function] DONE\n", flush=True)
-
         return wrapped
-
-
 
     # ---------------- CONTEXT ----------------
     def inject_context(self, carrier: Dict[str, str], context=None):
@@ -256,26 +194,26 @@ class TelemetryCollector:
     # ---------------- LIFECYCLE ----------------
     def flush(self, timeout_ms: int = 30000) -> bool:
         try:
-            if hasattr(self.tracer_provider, "force_flush"):
+            if self.tracer_provider and hasattr(self.tracer_provider, "force_flush"):
                 self.tracer_provider.force_flush(timeout_ms / 1000.0)
                 return True
         except Exception:
             pass
         return False
-    
+
     def shutdown(self, timeout_ms: int = 30000) -> bool:
         try:
             if self.meter_provider:
                 self.meter_provider.shutdown()
         except Exception:
             pass
-    
+
         try:
             if self.tracer_provider:
                 self.tracer_provider.shutdown(timeout_ms / 1000.0)
         except Exception:
             pass
-    
+
         return True
 
 
