@@ -91,6 +91,12 @@ class MetricsManager:
             logger.debug(f"Attempting to replace noop instrument '{name}'.")
 
         meter = self.get_meter(name)
+        if meter is None:
+            logger.warning(
+                "No Meter available for '%s' — using NOOP instrument",
+                name
+            )
+
 
         try:
             if meter:
